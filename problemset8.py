@@ -228,7 +228,7 @@ def bruteForceTime():
 #
 
 
-def dp_val_advisor(subjects, sorted_items, maxWork, i, memory, result_dict):
+def dp_val_advisor(subjects, sorted_items, maxWork, i, memory):
 
     if (sorted_items[i], maxWork) in memory:
         return memory[(sorted_items[i], maxWork)]
@@ -239,19 +239,16 @@ def dp_val_advisor(subjects, sorted_items, maxWork, i, memory, result_dict):
             return 0
         else:
             memory[(sorted_items[i], maxWork)] = subjects[sorted_items[i]][VALUE]
-            result_dict[sorted_items[i]] = subjects[sorted_items[i]]
             return subjects[sorted_items[i]][VALUE]
 
-    without_i = dp_val_advisor(subjects, sorted_items, maxWork, i-1, memory, result_dict)
+    without_i = dp_val_advisor(subjects, sorted_items, maxWork, i - 1, memory)
     if subjects[sorted_items[i]][WORK] > maxWork:
         memory[(sorted_items[i], maxWork)] = without_i
         return without_i
     else:
         with_i = subjects[sorted_items[i]][VALUE] \
-                  + dp_val_advisor(subjects, sorted_items, maxWork - subjects[sorted_items[i]][WORK], i-1, memory, result_dict)
+                 + dp_val_advisor(subjects, sorted_items, maxWork - subjects[sorted_items[i]][WORK], i - 1, memory)
         result = max(without_i, with_i)
-        if result == with_i:
-            result_dict[sorted_items[i]] = subjects[sorted_items[i]]
         memory[(sorted_items[i], maxWork)] = result
         return result
 
@@ -268,10 +265,19 @@ def dpAdvisor(subjects, maxWork):
     possible_answers = list(filter(lambda x: subjects[x][WORK] <= maxWork, subjects))
     possible_answers = sort_compared(subjects, possible_answers, cmpValue)
     memory = {}
-    result_dict = {}
-    dp_val_advisor(subjects, possible_answers, maxWork, len(possible_answers) - 1, memory, result_dict)
+    dp_val_advisor(subjects, possible_answers, maxWork, len(possible_answers) - 1, memory)
 
-    return result_dict
+    # Find path to the best answer
+    available_work = maxWork
+    path = []
+    for i in range(len(possible_answers)-1, 0, -1):
+        bottom_branch = dp_val_advisor(subjects, possible_answers, available_work, i, memory)
+        top_branch = dp_val_advisor(subjects, possible_answers, available_work, i-1, memory)
+        if bottom_branch != top_branch:
+            path.append(possible_answers[i])
+            available_work -= subjects[possible_answers[i]][WORK]
+
+    return {key: subjects[key] for key in path}
 
 #
 # Problem 5: Performance Comparison
@@ -295,9 +301,9 @@ def dpTime():
 if __name__ == '__main__':
     # s = {'6.00': (16, 8),  '1.00': (7, 7), '6.01': (5, 3), '15.01': (9, 6)}
     s = loadSubjects(SUBJECT_FILENAME)
-    print(greedyAdvisor(s, 5, cmpValue))
+    print(greedyAdvisor(s, 9, cmpValue))
     # print(greedyAdvisor(s, 15, cmpWork))
     # print(greedyAdvisor(s, 15, cmpRatio))
-    print(bruteForceAdvisor(s, 5))
-    print(dpAdvisor(s, 5))
+    print(bruteForceAdvisor(s, 9))
+    print(dpAdvisor(s, 9))
 
