@@ -21,6 +21,7 @@ class NoChildException(Exception):
 # PROBLEM 1
 #
 
+
 class SimpleVirus(object):
     """
     Representation of a simple virus (does not model drug effects/resistance).
@@ -35,7 +36,8 @@ class SimpleVirus(object):
         
         clearProb: Maximum clearance probability (a float between 0-1).
         """
-        # TODO
+        self.maxBirthProb = maxBirthProb
+        self.clearProb = clearProb
         
     def doesClear(self):
         """
@@ -46,7 +48,8 @@ class SimpleVirus(object):
         returns True with probability self.clearProb and otherwise returns
         False.
         """
-        # TODO
+
+        return random.random() <= self.clearProb
     
     def reproduce(self, popDensity):
         """
@@ -67,7 +70,11 @@ class SimpleVirus(object):
         maxBirthProb and clearProb values as this virus. Raises a
         NoChildException if this virus particle does not reproduce.               
         """
-        # TODO
+        if random.random() <= (self.maxBirthProb * (1 - popDensity)):
+            return SimpleVirus(self.maxBirthProb, self.clearProb)
+        else:
+            raise NoChildException
+
 
 class SimplePatient(object):
     """
@@ -85,7 +92,14 @@ class SimplePatient(object):
         
         maxPop: the  maximum virus population for this patient (an integer)
         """
-        # TODO
+        self.viruses = viruses
+        self.maxPop = maxPop
+
+    def getMaxPop(self):
+        return self.maxPop
+
+    def getPopDensity(self):
+        return self.getTotalPop() / self.getMaxPop()
 
     def getTotalPop(self):
         """
@@ -93,7 +107,7 @@ class SimplePatient(object):
 
         returns: The total virus population (an integer)
         """
-        # TODO        
+        return len(self.viruses)
 
     def update(self):
         """
@@ -112,11 +126,21 @@ class SimplePatient(object):
         returns: the total virus population at the end of the update (an
         integer)
         """
-        # TODO
+        self.viruses = [virus for virus in self.viruses if not virus.doesClear()]
 
+        offsprings = []
+        for virus in self.viruses:
+            try:
+                offsprings.append(virus.reproduce(self.getPopDensity()))
+            except NoChildException:
+                pass
+        self.viruses += offsprings
+
+        return self.getTotalPop()
 #
 # PROBLEM 2
 #
+
 
 def problem2():
     """
@@ -126,7 +150,21 @@ def problem2():
     Instantiates a patient, runs a simulation for 300 timesteps, and plots the
     total virus population as a function of time.    
     """
-    # TODO    
+    viruses = []
+    for i in range(100):
+        viruses.append(SimpleVirus(0.1, 0.05))
+
+    patient = SimplePatient(viruses, 1000)
+
+    virus_pop = []
+    for i in range(300):
+        virus_pop.append(patient.update())
+
+    pylab.figure(1)
+    pylab.plot(virus_pop)
+    pylab.xlabel('Time Step')
+    pylab.ylabel('Virus Population')
+    pylab.title('Population of Virus in SimplePatient Body')
     
 #
 # PROBLEM 3
@@ -348,3 +386,7 @@ def problem7():
     a simulations for which drugs are administered simultaneously.        
     """
     # TODO
+
+
+if __name__ == '__main__':
+    problem2()
