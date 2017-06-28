@@ -192,7 +192,9 @@ class ResistantVirus(SimpleVirus):
         mutProb: Mutation probability for this virus particle (a float). This is
         the probability of the offspring acquiring or losing resistance to a drug.        
         """
-        # TODO
+        super(ResistantVirus, self).__init__(maxBirthProb, clearProb)
+        self.resistances_dict = resistances
+        self.mutProb = mutProb
         
     def getResistance(self, drug):
         """
@@ -205,7 +207,7 @@ class ResistantVirus(SimpleVirus):
         returns: True if this virus instance is resistant to the drug, False
         otherwise.
         """
-        # TODO
+        return self.resistances_dict[drug]
         
     def reproduce(self, popDensity, activeDrugs):
         """
@@ -246,8 +248,21 @@ class ResistantVirus(SimpleVirus):
         maxBirthProb and clearProb values as this virus. Raises a
         NoChildException if this virus particle does not reproduce.         
         """
-        # TODO
-            
+        if True in [self.getResistance(drug) for drug in activeDrugs]:
+            raise NoChildException
+        else:
+            if random.random() <= (self.maxBirthProb * (1 - popDensity)):
+                offspirng_resistances = {}
+                for drug in self.resistances_dict:
+                    if random.random() <= self.mutProb:
+                        offspirng_resistances[drug] = not self.getResistance(drug)
+                    else:
+                        offspirng_resistances[drug] = self.getResistance(drug)
+
+                return ResistantVirus(self.maxBirthProb, self.clearProb, offspirng_resistances, self.mutProb)
+            else:
+                raise NoChildException
+
 class Patient(SimplePatient):
     """
     Representation of a patient. The patient is able to take drugs and his/her
@@ -265,7 +280,8 @@ class Patient(SimplePatient):
         
         maxPop: the  maximum virus population for this patient (an integer)
         """
-        # TODO
+        self.taken_drugs = []
+        super(Patient, self).__init__(viruses, maxPop)
         
     def addPrescription(self, newDrug):
         """
@@ -277,7 +293,8 @@ class Patient(SimplePatient):
 
         postcondition: list of drugs being administered to a patient is updated
         """
-        # TODO
+        if newDrug not in self.taken_drugs:
+            self.taken_drugs.append(newDrug)
 
     def getPrescriptions(self):
         """
@@ -286,7 +303,7 @@ class Patient(SimplePatient):
         returns: The list of drug names (strings) being administered to this
         patient.
         """
-        # TODO
+        return self.taken_drugs
         
     def getResistPop(self, drugResist):
         """
@@ -299,7 +316,17 @@ class Patient(SimplePatient):
         returns: the population of viruses (an integer) with resistances to all
         drugs in the drugResist list.
         """
-        # TODO
+        resistant_viruses = []
+        for virus in self.viruses:
+            virus_is_resistant = True
+            for drug in drugResist:
+                if not virus.getResistance(drug):
+                    virus_is_resistant = False
+
+            if virus_is_resistant:
+                resistant_viruses.append(virus)
+
+        return len(resistant_viruses)
 
     def update(self):
         """
@@ -320,7 +347,17 @@ class Patient(SimplePatient):
         returns: the total virus population at the end of the update (an
         integer)
         """
-        # TODO
+        self.viruses = [virus for virus in self.viruses if not virus.doesClear()]
+
+        offsprings = []
+        for virus in self.viruses:
+            try:
+                offsprings.append(virus.reproduce(self.getPopDensity(), self.getPrescriptions()))
+            except NoChildException:
+                pass
+        self.viruses += offsprings
+
+        return self.getTotalPop()
 
 #
 # PROBLEM 4
@@ -336,7 +373,31 @@ def problem4():
     total virus population vs. time  and guttagonol-resistant virus population
     vs. time are plotted
     """
-    # TODO
+    viruses = []
+    for i in range(100):
+        viruses.append(ResistantVirus(0.1, 0.05, {'guttagonol': False}, 0.005))
+
+    patient = Patient(viruses, 1000)
+
+    virus_pop = []
+    resistant_virus_pop = []
+    for i in range(150):
+        virus_pop.append(patient.update())
+        resistant_virus_pop.append(patient.getResistPop(['guttagonol']))
+
+    patient.addPrescription('guttagonol')
+
+    for i in range(150):
+        virus_pop.append(patient.update())
+        resistant_virus_pop.append(patient.getResistPop(['guttagonol']))
+
+    pylab.figure(2)
+    pylab.plot(virus_pop, color='b')
+    pylab.plot(resistant_virus_pop, color='r')
+    pylab.xlabel('Time Step')
+    pylab.ylabel('Virus Population')
+    pylab.title('Population of Virus in Patient Body')
+
 
 #
 # PROBLEM 5
@@ -353,8 +414,38 @@ def problem5():
     150, 75, 0 timesteps (followed by an additional 150 timesteps of
     simulation).    
     """
-    # TODO
-    
+    num_trials = 40
+    virus_pop = {0: [], 75: [], 150: [], 300: []}
+    resistant_virus_pop = {0: [], 75: [], 150: [], 300: []}
+
+    for k in range(num_trials):
+        for i in virus_pop.keys():
+            viruses = []
+            for j in range(100):
+                viruses.append(ResistantVirus(0.1, 0.05, {'guttagonol': False}, 0.005))
+
+            patient = Patient(viruses, 1000)
+
+            for j in range(i):
+                patient.update()
+
+            patient.addPrescription('guttagonol')
+
+            for j in range(150):
+                patient.update()
+
+            virus_pop[i].append(patient.getTotalPop())
+            resistant_virus_pop[i].append(patient.getResistPop(['guttagonol']))
+
+    pylab.figure(3)
+    pylab.hist(virus_pop[300], color='b')
+    pylab.ylabel('Number of patients')
+    pylab.xlabel('Virus Population')
+
+    pylab.figure(4)
+    pylab.hist(resistant_virus_pop[300], color='r')
+    pylab.ylabel('Number of patients')
+    pylab.xlabel('Virus Population')
 #
 # PROBLEM 6
 #
@@ -389,4 +480,7 @@ def problem7():
 
 
 if __name__ == '__main__':
-    problem2()
+    # problem2()
+    # problem4()
+    problem5()
+    pylab.show()
